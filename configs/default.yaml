@@ -1,0 +1,72 @@
+experiment_name: "option_price_t2"
+
+dataset:
+  csv_path: "data/real_price_CMSN2406.csv"     
+  time_col: "time"
+  target_col: "option_price"
+  horizon: 2                            # t+2
+  window_size: 20                       # số ngày lookback cho LSTM
+  # chọn cột gốc từ CSV
+  base_feature_cols:
+    - stock_price
+    - volume
+    - sigma
+    - S-K
+    - bs_price
+    - option_price
+  # engineered features từ csv
+  engineered_features:
+    use_returns: true       # return_stock, return_option
+    use_spread_bs: true     # option_price - bs_price
+    use_rolling: true       # vol & MA rolling 5 ngày
+    rolling_window: 5
+
+  # optional: merge thêm file ngoài làm feature (có thể để trống)
+  external_features:
+    enabled: false
+    files:
+      # - path: "data/other_option.csv"
+      #   join_on: "time"
+      #   columns:
+      #     - other_option_price
+
+  # splitting theo tháng
+  split:
+    train_months: 8       # train trên 8 tháng đầu
+    test_month_index: 9   # test trên tháng thứ 9 (tính theo thứ tự thời gian)
+
+model:
+  type: "lstm"            # "lstm" hoặc "rnn"
+  input_size: null        # sẽ set tự động theo số feature
+  hidden_size: 64
+  num_layers: 2
+  dropout: 0.1
+  bidirectional: false
+
+training:
+  batch_size: 32
+  num_epochs: 50
+  learning_rate: 0.001
+  weight_decay: 0.0
+  device: "cuda"          # "cuda" hoặc "cpu"
+  num_workers: 0
+  shuffle_train: true
+
+logging:
+  print_every: 10
+  save_best: true
+  output_dir: "outputs"
+
+evaluation:
+  metrics:
+    - mse
+    - mae
+    - rmse
+
+checkpoint:
+  enabled: true
+  dir: "checkpoints"
+  save_best_only: true
+  monitor: "train_loss"   # hiện tại chỉ monitor train_loss
+  filename: "best_model.pt"
+  resume_from: null       # path checkpoint nếu muốn resume, vd: "checkpoints/best_model.pt"
