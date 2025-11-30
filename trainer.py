@@ -1,4 +1,3 @@
-# trainer.py
 from typing import Dict, Tuple
 
 import torch

@@ -40,13 +40,13 @@ model:
   input_size: null        # sẽ set tự động theo số feature
   hidden_size: 64
   num_layers: 2
-  dropout: 0.1
+  dropout: 0.15
   bidirectional: false
 
 training:
   batch_size: 32
-  num_epochs: 50
-  learning_rate: 0.001
+  num_epochs: 200
+  learning_rate: 0.00001
   weight_decay: 0.0
   device: "cuda"          # "cuda" hoặc "cpu"
   num_workers: 0

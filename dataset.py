@@ -114,6 +114,7 @@ def load_and_prepare_data(cfg: Dict):
         "scaler_y": scaler_y,
         "train_months": train_months,
         "test_month": test_month,
+        "test_dates": test_df[time_col].values,
     }
 
     return (X_train, y_train, X_test, y_test, meta)

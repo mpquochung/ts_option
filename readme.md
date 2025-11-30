@@ -10,3 +10,8 @@ python main.py --config configs/default.yaml \
                --learning_rate 0.001 \
                --hidden_size 64
 ```
+To run train + rollout and plot:
+
+```
+python main.py --config configs/default.yaml --plot
+```

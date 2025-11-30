@@ -6,7 +6,7 @@ import torch
 
 from utils import load_config, set_seed
 from trainer import build_dataloaders, build_model, train_model
-from eval import evaluate_model, load_model_from_checkpoint
+from eval import evaluate_model, load_model_from_checkpoint, rollout_predictions, plot_time_series
 
 
 def parse_args():
@@ -18,6 +18,13 @@ def parse_args():
         default="configs/default.yaml",
         help="Path to config YAML",
     )
+
+    parser.add_argument(
+        "--plot",
+        action="store_true",
+        help="If set, plot time series of true vs predicted on test set",
+    )
+
     # override 1 số hyperparam nếu muốn
     parser.add_argument("--batch_size", type=int, default=None)
     parser.add_argument("--learning_rate", type=float, default=None)
@@ -85,11 +92,38 @@ def main():
             )
 
     results, (y_true, y_pred) = evaluate_model(cfg, model, test_loader, scaler_y)
-
-
     print("=== Test metrics (t+2 option_price) ===")
     for k, v in results.items():
         print(f"{k.upper()}: {v:.6f}")
+
+
+    if args.plot:
+        y_true_roll, y_pred_roll = rollout_predictions(cfg, model, test_loader, scaler_y)
+
+        test_dates = meta.get("test_dates", None)
+        window_size = cfg["dataset"]["window_size"]
+
+        # Align dates với target: mỗi y_t là label của cửa sổ kết thúc ở index (window_size-1 + i)
+        if test_dates is not None:
+            # test_dates: length = N_test_raw
+            # y_true_roll: length = N_seq = N_test_raw - window_size + 1
+            test_dates_aligned = test_dates[window_size - 1:]
+        else:
+            test_dates_aligned = None
+
+        title = f"Option price t+2 - Test month {meta['test_month']}"
+
+        out_dir = cfg["logging"].get("output_dir", "outputs")
+        os.makedirs(out_dir, exist_ok=True)
+        save_path = os.path.join(out_dir, f"time_series_{meta['test_month']}.png")
+
+        plot_time_series(
+            y_true_roll,
+            y_pred_roll,
+            dates=test_dates_aligned,
+            title=title,
+            save_path=save_path,
+        )
 
 
 if __name__ == "__main__":
