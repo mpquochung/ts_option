@@ -3,7 +3,7 @@ from typing import Dict, Tuple
 import torch
 from torch.utils.data import DataLoader
 
-from dataset import TimeSeriesDataset, load_and_prepare_data
+from dataloader import TimeSeriesDataset, load_and_prepare_data
 from models import BaseRNNModel
 
 import os
