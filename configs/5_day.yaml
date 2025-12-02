@@ -4,8 +4,8 @@ dataset:
   csv_path: "../sample/CVRE2407.csv"     
   time_col: "time"
   target_col: "option_price"
-  horizon: 2
-  output_window: 1                            # t+2
+  horizon: 1
+  output_window: 5                            # t+2
   window_size: 15                     # số ngày lookback cho LSTM
   # chọn cột gốc từ CSV
   base_feature_cols:

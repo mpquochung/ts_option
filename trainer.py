@@ -4,22 +4,22 @@ import torch
 from torch.utils.data import DataLoader
 
 from dataloader import TimeSeriesDataset, load_and_prepare_data
-from models import BaseRNNModel
+from models import BaseRNNModel, Seq2SeqModel
 
 import os
 
 def build_dataloaders(cfg: Dict):
     ds_cfg = cfg["dataset"]
     window_size = ds_cfg["window_size"]
+    output_size = ds_cfg["output_window"]
     batch_size = cfg["training"]["batch_size"]
     num_workers = cfg["training"]["num_workers"]
     shuffle_train = cfg["training"]["shuffle_train"]
 
     X_train, y_train, X_test, y_test, meta = load_and_prepare_data(cfg)
 
-    train_ds = TimeSeriesDataset(X_train, y_train, window_size)
-    test_ds = TimeSeriesDataset(X_test, y_test, window_size)
-
+    train_ds = TimeSeriesDataset(X_train, y_train, window_size, output_size)
+    test_ds = TimeSeriesDataset(X_test, y_test, window_size, output_size)
     train_loader = DataLoader(
         train_ds,
         batch_size=batch_size,
@@ -39,16 +39,31 @@ def build_dataloaders(cfg: Dict):
     return train_loader, test_loader, meta
 
 
-def build_model(cfg: Dict, input_size: int) -> BaseRNNModel:
+def build_model(cfg: Dict, input_dim: int) -> BaseRNNModel:
     m_cfg = cfg["model"]
-    model = BaseRNNModel(
-        input_size=input_size,
-        hidden_size=m_cfg["hidden_size"],
-        num_layers=m_cfg["num_layers"],
-        dropout=m_cfg["dropout"],
-        rnn_type=m_cfg["type"],
-        bidirectional=m_cfg["bidirectional"],
-    )
+    d_cfg = cfg["dataset"]
+
+    input_size = d_cfg["window_size"]
+    output_size = d_cfg["output_window"]
+
+    if output_size == 1:
+        model = BaseRNNModel(
+            input_size=input_dim,
+            hidden_size=m_cfg["hidden_size"],
+            num_layers=m_cfg["num_layers"],
+            dropout=m_cfg["dropout"],
+            rnn_type=m_cfg["type"],
+            bidirectional=m_cfg["bidirectional"],
+        )
+    else:
+        model = Seq2SeqModel(
+            input_size=input_dim,
+            hidden_size=m_cfg["hidden_size"],
+            num_layers=m_cfg["num_layers"],
+            dropout=m_cfg["dropout"],
+            rnn_type=m_cfg["type"],
+            bidirectional=m_cfg["bidirectional"],
+        )
     return model
 
 
@@ -62,6 +77,7 @@ def train_model(
     weight_decay = cfg["training"]["weight_decay"]
     num_epochs = cfg["training"]["num_epochs"]
     print_every = cfg["logging"]["print_every"]
+    output_size = cfg["dataset"]["output_window"]
 
     ckpt_cfg = cfg.get("checkpoint", {})
     ckpt_enabled = ckpt_cfg.get("enabled", False)
@@ -103,7 +119,7 @@ def train_model(
             y_batch = y_batch.to(device)
 
             optimizer.zero_grad()
-            y_pred = model(x_batch)
+            y_pred = model(x_batch, target_len=output_size)
             loss = criterion(y_pred, y_batch)
             loss.backward()
             optimizer.step()

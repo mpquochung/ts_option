@@ -72,7 +72,7 @@ def main():
     print(f"Using {len(feature_cols)} features: {feature_cols}")
 
     # build model
-    model = build_model(cfg, input_size=len(feature_cols))
+    model = build_model(cfg, input_dim=len(feature_cols))
 
     # train
     model = train_model(cfg, model, train_loader)
@@ -106,8 +106,7 @@ def main():
         # Align dates với target: mỗi y_t là label của cửa sổ kết thúc ở index (window_size-1 + i)
         if test_dates is not None:
             # test_dates: length = N_test_raw
-            # y_true_roll: length = N_seq = N_test_raw - window_size + 1
-            test_dates_aligned = test_dates[window_size - 1:]
+            test_dates_aligned = test_dates[window_size:]
         else:
             test_dates_aligned = None
 
