@@ -13,5 +13,5 @@ python main.py --config configs/default.yaml \
 To run train + rollout and plot:
 
 ```
-python main.py --config configs/default.yaml --plot
+python main.py --config configs/default.yaml
 ```

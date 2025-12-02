@@ -35,8 +35,8 @@ dataset:
 
   # splitting theo tháng
   split:
-    train_months: 8       # train trên 8 tháng đầu
-    test_month_index: 9   # test trên tháng thứ 9 (tính theo thứ tự thời gian)
+    train_months: 7       # train trên 7 tháng đầu
+    test_month_index: 8   # test trên tháng thứ 8 (tính theo thứ tự thời gian)
 
 model:
   type: "lstm"            # "lstm" hoặc "rnn"
@@ -54,6 +54,7 @@ training:
   device: "cuda"          # "cuda" hoặc "cpu"
   num_workers: 0
   shuffle_train: true
+  random_noise: false    # thêm noise vào sigma trong training
 
 logging:
   print_every: 10

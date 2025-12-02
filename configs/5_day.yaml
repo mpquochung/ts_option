@@ -1,7 +1,7 @@
 experiment_name: "option_price_t2"
 
 dataset:
-  csv_path: "data/CVRE2407.csv"     
+  csv_path: "../sample/CVRE2407.csv"     
   time_col: "time"
   target_col: "option_price"
   horizon: 1
@@ -35,25 +35,26 @@ dataset:
 
   # splitting theo tháng
   split:
-    train_months: 8       # train trên 8 tháng đầu
-    test_month_index: 9   # test trên tháng thứ 9 (tính theo thứ tự thời gian)
+    train_months: 7       # train trên 7 tháng đầu
+    test_month_index: 8   # test trên tháng thứ 8 (tính theo thứ tự thời gian)
 
 model:
-  type: "lstm"            # "lstm" hoặc "rnn"
+  type: "gru"            # "lstm" hoặc "rnn"
   input_size: null        # sẽ set tự động theo số feature
-  hidden_size: 64
-  num_layers: 2
+  hidden_size: 48
+  num_layers: 1
   dropout: 0.2
-  bidirectional: true
+  bidirectional: false
 
 training:
   batch_size: 8
   num_epochs: 10
   learning_rate: 0.001
   weight_decay: 0.0001
-  device: "cuda"          # "cuda" hoặc "cpu"
+  device: "mps"          # "cuda" hoặc "cpu"
   num_workers: 0
   shuffle_train: true
+  random_noise: false    # thêm noise vào sigma trong training
 
 logging:
   print_every: 10

@@ -10,23 +10,23 @@ RESULTS_DIR="experiment_results"
 mkdir -p "$RESULTS_DIR"
 
 # File CSV để lưu kết quả
-RESULTS_CSV="$RESULTS_DIR/experiment_results_$(date +%Y%m%d_%H%M%S).csv"
+RESULTS_CSV="$RESULTS_DIR/experiment_results_5day_$(date +%Y%m%d_%H%M%S).csv"
 
 # Tạo header cho CSV
 echo "experiment_id,csv_file,model_type,hidden_size,num_layers,batch_size,learning_rate,epochs,window_size,mse,mae,rmse,train_months,test_month" > "$RESULTS_CSV"
 
 # Danh sách các file CSV để test
 CSV_FILES=(
-    "data/CVRE2407.csv"
-    "data/CMSN2406.csv"
-    "data/CSTB2410.csv"
+    "../sample/CVRE2407.csv"
+    "../sample/CMSN2406.csv"
+    "../sample/CSTB2410.csv"
 )
 
 # Danh sách các model type
 MODEL_TYPES=("lstm" "gru" "rnn")
 
 # Danh sách các hidden_size để test
-HIDDEN_SIZES=(32 64 128)
+HIDDEN_SIZES=(32 48 64)
 
 # Danh sách các num_layers để test
 NUM_LAYERS=(1 2)
@@ -35,14 +35,14 @@ NUM_LAYERS=(1 2)
 BATCH_SIZES=(8 16 32)
 
 # Danh sách các learning_rate để test
-LEARNING_RATES=(0.001)
+LEARNING_RATES=(0.001 0.0002)
 
 # Số epochs (có thể giảm để test nhanh hơn)
 NUM_EPOCHS=10
 
 # Window size
 
-WINDOW_SIZE=(5 10 15 20 25)
+RANDOM_NOISE=(true false)
 
 # Counter cho experiment ID
 EXPERIMENT_ID=1
@@ -67,7 +67,14 @@ for csv_file in "${CSV_FILES[@]}"; do
             for num_layers in "${NUM_LAYERS[@]}"; do
                 for batch_size in "${BATCH_SIZES[@]}"; do
                     for lr in "${LEARNING_RATES[@]}"; do
-                        for window_size in "${WINDOW_SIZE[@]}"; do
+                        for random_noise in "${RANDOM_NOISE[@]}"; do
+                            # Điều chỉnh số epochs theo learning rate
+                            if (( $(echo "$lr == 0.0002" | bc -l) )); then
+                                CURRENT_EPOCHS=15
+                            else
+                                CURRENT_EPOCHS=$NUM_EPOCHS
+                            fi
+                            
                             echo "----------------------------------------"
                             echo "Experiment $EXPERIMENT_ID / $TOTAL_EXPERIMENTS"
                             echo "CSV: $csv_name"
@@ -77,13 +84,14 @@ for csv_file in "${CSV_FILES[@]}"; do
                             echo "Batch Size: $batch_size"
                             echo "Learning Rate: $lr"
                             echo "Window Size: $window_size"
+                            echo "Epochs: $CURRENT_EPOCHS"
                             echo "----------------------------------------"
                             
                             # Tạo config file tạm thời
                             TEMP_CONFIG="$RESULTS_DIR/temp_config_${EXPERIMENT_ID}.yaml"
                             
                             # Copy config mẫu và thay đổi các tham số
-                            cat configs/default.yaml > "$TEMP_CONFIG"
+                            cat configs/5_day.yaml > "$TEMP_CONFIG"
                             
                             sed -i "s|csv_path:.*|csv_path: \"$csv_file\"|" "$TEMP_CONFIG"
 
@@ -92,13 +100,13 @@ for csv_file in "${CSV_FILES[@]}"; do
                             sed -i "s|num_layers:.*|num_layers: $num_layers|" "$TEMP_CONFIG"
 
                             sed -i "s|batch_size:.*|batch_size: $batch_size|" "$TEMP_CONFIG"
-                            sed -i "s|num_epochs:.*|num_epochs: $NUM_EPOCHS|" "$TEMP_CONFIG"
+                            sed -i "s|num_epochs:.*|num_epochs: $CURRENT_EPOCHS|" "$TEMP_CONFIG"
                             sed -i "s|learning_rate:.*|learning_rate: $lr|" "$TEMP_CONFIG"
 
                             sed -i "s|experiment_name:.*|experiment_name: \"exp_${EXPERIMENT_ID}_${csv_name}_${model_type}\"|" "$TEMP_CONFIG"
                             sed -i "s|filename:.*|filename: \"model_exp${EXPERIMENT_ID}.pt\"|" "$TEMP_CONFIG"
 
-                            sed -i "s|window_size:.*|window_size: $window_size|" "$TEMP_CONFIG"
+                            sed -i "s|random_noise:.*|random_noise: $random_noise|" "$TEMP_CONFIG"
 
                             
                             # Chạy training và capture output
@@ -136,7 +144,7 @@ for csv_file in "${CSV_FILES[@]}"; do
                                 echo "  RMSE: $RMSE"
                                 
                                 # Ghi kết quả vào CSV
-                                echo "$EXPERIMENT_ID,$csv_name,$model_type,$hidden_size,$num_layers,$batch_size,$window_size,$lr,$NUM_EPOCHS,$MSE,$MAE,$RMSE,$TRAIN_MONTHS,$TEST_MONTH" >> "$RESULTS_CSV"
+                                echo "$EXPERIMENT_ID,$csv_name,$model_type,$hidden_size,$num_layers,$batch_size,$window_size,$lr,$CURRENT_EPOCHS,$MSE,$MAE,$RMSE,$TRAIN_MONTHS,$TEST_MONTH" >> "$RESULTS_CSV"
                             else
                                 echo "✗ Training thất bại (exit code $STATUS)"
                                 echo "------ Python error output ------"
@@ -144,7 +152,7 @@ for csv_file in "${CSV_FILES[@]}"; do
                                 echo "---------------------------------"
 
                                 # Ghi lỗi vào CSV
-                                echo "$EXPERIMENT_ID,$csv_name,$model_type,$hidden_size,$num_layers,$batch_size,$window_size,$lr,$NUM_EPOCHS,ERROR,ERROR,ERROR,N/A,N/A" >> "$RESULTS_CSV"
+                                echo "$EXPERIMENT_ID,$csv_name,$model_type,$hidden_size,$num_layers,$batch_size,$window_size,$lr,$CURRENT_EPOCHS,ERROR,ERROR,ERROR,N/A,N/A" >> "$RESULTS_CSV"
                             fi
                             
                             # Xóa temp config

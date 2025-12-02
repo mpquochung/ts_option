@@ -75,6 +75,9 @@ def load_and_prepare_data(cfg: Dict):
     df["year_month"] = df[time_col].dt.to_period("M").astype(str)
     unique_months = df["year_month"].drop_duplicates().tolist()
 
+    df['sigma_N'] = (df['sigma'] / df['stock_price']) * np.sqrt(202) * (1 - df['maturity'])
+
+
     train_months_n = ds_cfg["split"]["train_months"]
     test_month_idx = ds_cfg["split"]["test_month_index"]
 
@@ -87,6 +90,9 @@ def load_and_prepare_data(cfg: Dict):
     train_months = unique_months[:train_months_n]
     test_month = unique_months[test_month_idx - 1]  # index 1-based
 
+    print(f"Unique months: {unique_months}")
+    print(f"Train months: {train_months}")
+
     train_df = df[df["year_month"].isin(train_months)].copy()
     
     # Test_df bao gồm tháng test và window_size dòng trước đó để tạo sequence
@@ -97,6 +103,7 @@ def load_and_prepare_data(cfg: Dict):
     test_df = df.iloc[start_idx:test_month_end_idx + 1].copy()
 
     # có thể thêm val tách từ train_df nếu muốn
+    base_feature_cols = [col for col in base_feature_cols if col not in ['sigma_N']]
 
     # ==== scale theo train ====
     X_train_raw = train_df[base_feature_cols]
@@ -122,6 +129,9 @@ def load_and_prepare_data(cfg: Dict):
     y_test_scaled = scaler_y.transform(y_test_raw)
     y_test = pd.DataFrame(y_test_scaled, columns=["target"], index=y_test_raw.index)
 
+    X_train['sigma_N'] = train_df['sigma_N'].values
+    X_test['sigma_N'] = test_df['sigma_N'].values
+
     meta = {
         "feature_cols": base_feature_cols,
         "scaler_X": scaler_X,
@@ -141,14 +151,18 @@ class TimeSeriesDataset(Dataset):
     - Label: target tại end step (t), là giá option ở t+2 (do đã shift trong df)
     """
 
-    def __init__(self, X: pd.DataFrame, y: pd.DataFrame, input_size: int, output_size: int):
+    def __init__(self, X: pd.DataFrame, y: pd.DataFrame, input_size: int, output_size: int, random_noise: bool = True, train: bool = True):
         assert len(X) == len(y)
         self.X = X
         self.y = y
         self.input_size = input_size
         self.output_size = output_size
-        self.maturity_idx = X.columns.get_loc('maturity')
-        self.sigma_idx = X.columns.get_loc('return_stock')
+        self.maturity_idx = -1
+        self.sigma_idx = -2
+        self.random_noise = random_noise
+        self.train = train
+
+        print(len(X))
 
     def __len__(self):
         # số cửa sổ hợp lệ
@@ -157,9 +171,22 @@ class TimeSeriesDataset(Dataset):
     def __getitem__(self, idx):
         # window: [idx, idx+window_size)
         x_seq = self.X.iloc[idx:idx + self.input_size]  # (L, F)
+        x_seq = x_seq.drop(columns=['sigma_N'])
         y_target = self.y.iloc[idx + self.input_size : idx + self.input_size  + self.output_size]  # scalar (đã scaled)
         
         x_seq = torch.tensor(x_seq.values, dtype=torch.float32)
         y_target = torch.tensor(y_target.values, dtype=torch.float32).squeeze(-1)  # (output_size,)
+
+        # Thêm random noise vào feature sigma (return_stock) trong training
+        # normalized sigma = sigma / stock_price
+        if self.train and self.random_noise:
+            x_sigma  = self.X.iloc[idx + self.input_size : idx + self.input_size  + self.output_size]['sigma_N']
+                        
+            sigma_value = torch.tensor(x_sigma.values, dtype=torch.float32)
+            # N(1, lambda * sigma_value)
+            lambda_ = 0.25
+            noise = torch.normal(mean=1.0, std=lambda_ * sigma_value)
+            y_target = y_target * noise
+
 
         return x_seq, y_target

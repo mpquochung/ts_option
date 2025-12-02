@@ -15,11 +15,12 @@ def build_dataloaders(cfg: Dict):
     batch_size = cfg["training"]["batch_size"]
     num_workers = cfg["training"]["num_workers"]
     shuffle_train = cfg["training"]["shuffle_train"]
+    random_noise = cfg["training"].get("random_noise", False)
 
     X_train, y_train, X_test, y_test, meta = load_and_prepare_data(cfg)
 
-    train_ds = TimeSeriesDataset(X_train, y_train, window_size, output_size)
-    test_ds = TimeSeriesDataset(X_test, y_test, window_size, output_size)
+    train_ds = TimeSeriesDataset(X_train, y_train, window_size, output_size, train=True, random_noise=random_noise)
+    test_ds = TimeSeriesDataset(X_test, y_test, window_size, output_size, train=False, random_noise=False)
     train_loader = DataLoader(
         train_ds,
         batch_size=batch_size,
