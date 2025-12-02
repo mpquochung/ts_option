@@ -29,6 +29,7 @@ def evaluate_model(
     scaler_y,
 ) -> Dict[str, float]:
     device = cfg["training"]["device"]
+    output_size = cfg["dataset"]["output_window"]
     model.eval()
     all_preds_scaled = []
     all_targets_scaled = []
@@ -37,7 +38,7 @@ def evaluate_model(
         for x_batch, y_batch in data_loader:
             x_batch = x_batch.to(device)
             y_batch = y_batch.to(device)
-            y_pred = model(x_batch)
+            y_pred = model(x_batch, target_len = output_size)  # (B, output_size)
 
             all_preds_scaled.append(y_pred.cpu().numpy())
             all_targets_scaled.append(y_batch.cpu().numpy())
@@ -69,6 +70,7 @@ def rollout_predictions(
     trả về (y_true, y_pred) đã inverse scale về đơn vị gốc.
     """
     device = cfg["training"]["device"]
+    output_size = cfg["dataset"]["output_window"]
     model.eval()
 
     all_preds_scaled = []
@@ -79,7 +81,7 @@ def rollout_predictions(
             x_batch = x_batch.to(device)
             y_batch = y_batch.to(device)
 
-            y_pred = model(x_batch)
+            y_pred = model(x_batch, target_len=output_size)  # (B, output_size)
 
             all_preds_scaled.append(y_pred.cpu().numpy())
             all_targets_scaled.append(y_batch.cpu().numpy())

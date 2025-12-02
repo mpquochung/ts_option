@@ -139,7 +139,8 @@ class Seq2SeqModel(nn.Module):
                     decoder_input, hidden
                 )  # out: (B, 1, H*num_directions)
             y_hat = self.output_layer(out[:, -1, :])  # (B, 1)
-            outputs.append(y_hat.unsqueeze(1))  # lưu lại output
-            decoder_input = y_hat.unsqueeze(1)  # dùng output làm input cho bước tiếp
+            y_hat_scalar = y_hat.squeeze(-1)              
+            outputs.append(y_hat_scalar)  # lưu lại output
+            decoder_input = y_hat_scalar.unsqueeze(-1).unsqueeze(1) # dùng output làm input cho bước tiếp
 
-        return torch.cat(outputs, dim=1)  # (B, target_len, 1)
+        return torch.stack(outputs, dim=1)  # (B, target_len, 1)

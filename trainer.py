@@ -150,6 +150,6 @@ def train_model(
                     ckpt_path,
                 )
                 if is_best:
-                    print(f"✅ Saved best checkpoint to {ckpt_path}")
+                    print(f"Saved best checkpoint to {ckpt_path}")
 
     return model

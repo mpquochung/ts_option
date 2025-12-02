@@ -1,12 +1,12 @@
-experiment_name: "option_price_t2"
+experiment_name: "exp_103_CVRE2407_gru"
 
 dataset:
-  csv_path: "data/CMSN2406.csv"     
+  csv_path: "data/CVRE2407.csv"
   time_col: "time"
   target_col: "option_price"
   horizon: 2                          # t+2
   output_window: 1                            
-  window_size: 15                     # số ngày lookback cho LSTM
+  window_size: 15
   # chọn cột gốc từ CSV
   base_feature_cols:
     - stock_price
@@ -39,15 +39,15 @@ dataset:
     test_month_index: 9   # test trên tháng thứ 9 (tính theo thứ tự thời gian)
 
 model:
-  type: "lstm"            # "lstm" hoặc "rnn"
+  type: "gru"
   input_size: null        # sẽ set tự động theo số feature
-  hidden_size: 64
-  num_layers: 2
+  hidden_size: 32
+  num_layers: 1
   dropout: 0.2
   bidirectional: true
 
 training:
-  batch_size: 16
+  batch_size: 32
   num_epochs: 10
   learning_rate: 0.001
   weight_decay: 0.0001
@@ -71,5 +71,5 @@ checkpoint:
   dir: "checkpoints"
   save_best_only: true
   monitor: "train_loss"   # hiện tại chỉ monitor train_loss
-  filename: "best_model.pt"
+  filename: "model_exp103.pt"
   resume_from: null       # path checkpoint nếu muốn resume, vd: "checkpoints/best_model.pt"
