@@ -17,6 +17,7 @@ def load_and_prepare_data(cfg: Dict):
     time_col = ds_cfg["time_col"]
     target_col = ds_cfg["target_col"]
     horizon = ds_cfg["horizon"]
+    window_size = ds_cfg["window_size"]
 
     df = pd.read_csv(csv_path)
     # parse time
@@ -64,12 +65,11 @@ def load_and_prepare_data(cfg: Dict):
             "ma_option",
         ]
 
-    # ==== label: target t+2 ====
-    df["target_tplus2"] = df[target_col].shift(-horizon)
+    # ==== label: target ====
+    df["target"] = df[target_col].shift(-horizon)
 
     # drop các dòng có NaN do rolling/shift
-    df = df.dropna(subset=base_feature_cols + ["target_tplus2"]).reset_index(drop=True)
-
+    df = df.dropna(subset=base_feature_cols + ["target"]).reset_index(drop=True)
     # ==== gán month index theo thời gian ====
     # unique Year-Month theo thứ tự thời gian
     df["year_month"] = df[time_col].dt.to_period("M").astype(str)
@@ -88,25 +88,39 @@ def load_and_prepare_data(cfg: Dict):
     test_month = unique_months[test_month_idx - 1]  # index 1-based
 
     train_df = df[df["year_month"].isin(train_months)].copy()
-    test_df = df[df["year_month"] == test_month].copy()
+    
+    # Test_df bao gồm tháng test và window_size dòng trước đó để tạo sequence
+    test_month_start_idx = df[df["year_month"] == test_month].index[0]
+    test_month_end_idx = df[df["year_month"] == test_month].index[-1]
+    # Lấy thêm window_size dòng trước test month để có đủ context cho sequence đầu tiên
+    start_idx = max(0, test_month_start_idx - window_size)
+    test_df = df.iloc[start_idx:test_month_end_idx + 1].copy()
 
     # có thể thêm val tách từ train_df nếu muốn
 
     # ==== scale theo train ====
-    X_train_raw = train_df[base_feature_cols].values
-    y_train_raw = train_df["target_tplus2"].values.reshape(-1, 1)
+    X_train_raw = train_df[base_feature_cols]
+    y_train_raw = train_df["target"]
+    y_train_raw = pd.DataFrame(y_train_raw.values, columns=["target"])
 
-    X_test_raw = test_df[base_feature_cols].values
-    y_test_raw = test_df["target_tplus2"].values.reshape(-1, 1)
+    X_test_raw = test_df[base_feature_cols]
+    y_test_raw = test_df["target"]
+    y_test_raw = pd.DataFrame(y_test_raw.values, columns=["target"])
 
     scaler_X = StandardScaler()
     scaler_y = StandardScaler()
 
-    X_train = scaler_X.fit_transform(X_train_raw)
-    y_train = scaler_y.fit_transform(y_train_raw)
-
-    X_test = scaler_X.transform(X_test_raw)
-    y_test = scaler_y.transform(y_test_raw)
+    X_train_scaled = scaler_X.fit_transform(X_train_raw)
+    X_train = pd.DataFrame(X_train_scaled, columns=base_feature_cols, index=X_train_raw.index)
+    
+    y_train_scaled = scaler_y.fit_transform(y_train_raw)
+    y_train = pd.DataFrame(y_train_scaled, columns=["target"], index=y_train_raw.index)
+    
+    X_test_scaled = scaler_X.transform(X_test_raw)
+    X_test = pd.DataFrame(X_test_scaled, columns=base_feature_cols, index=X_test_raw.index)
+    
+    y_test_scaled = scaler_y.transform(y_test_raw)
+    y_test = pd.DataFrame(y_test_scaled, columns=["target"], index=y_test_raw.index)
 
     meta = {
         "feature_cols": base_feature_cols,
@@ -127,18 +141,25 @@ class TimeSeriesDataset(Dataset):
     - Label: target tại end step (t), là giá option ở t+2 (do đã shift trong df)
     """
 
-    def __init__(self, X: np.ndarray, y: np.ndarray, window_size: int):
+    def __init__(self, X: pd.DataFrame, y: pd.DataFrame, input_size: int, output_size: int):
         assert len(X) == len(y)
-        self.X = torch.tensor(X, dtype=torch.float32)
-        self.y = torch.tensor(y, dtype=torch.float32)
-        self.window_size = window_size
+        self.X = X
+        self.y = y
+        self.input_size = input_size
+        self.output_size = output_size
+        self.maturity_idx = X.columns.get_loc('maturity')
+        self.sigma_idx = X.columns.get_loc('return_stock')
 
     def __len__(self):
         # số cửa sổ hợp lệ
-        return len(self.X) - self.window_size + 1
+        return len(self.X) - self.input_size - self.output_size + 1
 
     def __getitem__(self, idx):
         # window: [idx, idx+window_size)
-        x_seq = self.X[idx:idx + self.window_size]  # (L, F)
-        y_target = self.y[idx + self.window_size - 1]  # scalar (đã scaled)
+        x_seq = self.X.iloc[idx:idx + self.input_size]  # (L, F)
+        y_target = self.y.iloc[idx + self.input_size : idx + self.input_size  + self.output_size]  # scalar (đã scaled)
+        
+        x_seq = torch.tensor(x_seq.values, dtype=torch.float32)
+        y_target = torch.tensor(y_target.values, dtype=torch.float32).squeeze(-1)  # (output_size,)
+
         return x_seq, y_target
