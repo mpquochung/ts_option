@@ -133,24 +133,4 @@ def train_model(
         if epoch % print_every == 0 or epoch == start_epoch or epoch == num_epochs:
             print(f"[Epoch {epoch}/{num_epochs}] Train MSE (scaled): {avg_loss:.6f}")
 
-        # ==== Save checkpoint ====
-        if ckpt_enabled:
-            is_best = avg_loss < best_loss
-            if is_best:
-                best_loss = avg_loss
-
-            if not save_best_only or is_best:
-                torch.save(
-                    {
-                        "epoch": epoch,
-                        "model_state": model.state_dict(),
-                        "optimizer_state": optimizer.state_dict(),
-                        "best_loss": best_loss,
-                        "config": cfg,
-                    },
-                    ckpt_path,
-                )
-                if is_best:
-                    print(f"Saved best checkpoint to {ckpt_path}")
-
     return model

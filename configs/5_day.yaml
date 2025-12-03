@@ -1,7 +1,7 @@
 experiment_name: "option_price_t2"
 
 dataset:
-  csv_path: "../sample/CVRE2407.csv"     
+  csv_path: "data/CVRE2407.csv"     
   time_col: "time"
   target_col: "option_price"
   horizon: 1
@@ -41,20 +41,20 @@ dataset:
 model:
   type: "gru"            # "lstm" hoặc "rnn"
   input_size: null        # sẽ set tự động theo số feature
-  hidden_size: 48
+  hidden_size: 64
   num_layers: 1
   dropout: 0.2
   bidirectional: false
 
 training:
   batch_size: 8
-  num_epochs: 10
-  learning_rate: 0.001
+  num_epochs: 15
+  learning_rate: 0.0002
   weight_decay: 0.0001
-  device: "mps"          # "cuda" hoặc "cpu"
+  device: "cuda"          # "cuda" hoặc "cpu"
   num_workers: 0
   shuffle_train: true
-  random_noise: false    # thêm noise vào sigma trong training
+  random_noise: true    # thêm noise vào sigma trong training
 
 logging:
   print_every: 10
@@ -66,6 +66,7 @@ evaluation:
     - mse
     - mae
     - rmse
+    - mape
 
 checkpoint:
   enabled: true

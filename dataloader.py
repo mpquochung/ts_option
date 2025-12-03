@@ -184,7 +184,7 @@ class TimeSeriesDataset(Dataset):
                         
             sigma_value = torch.tensor(x_sigma.values, dtype=torch.float32)
             # N(1, lambda * sigma_value)
-            lambda_ = 0.25
+            lambda_ = 0.5
             noise = torch.normal(mean=1.0, std=lambda_ * sigma_value)
             y_target = y_target * noise
 

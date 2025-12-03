@@ -14,11 +14,15 @@ def mae(y_true, y_pred):
 def rmse(y_true, y_pred):
     return float(np.sqrt(mse(y_true, y_pred)))
 
+def mape(y_true, y_pred):
+    return float(np.mean(np.abs((y_true - y_pred) / y_true)) * 100)
+
 
 METRIC_FUNCS = {
     "mse": mse,
     "mae": mae,
     "rmse": rmse,
+    "mape": mape,
 }
 
 

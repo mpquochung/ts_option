@@ -13,13 +13,13 @@ mkdir -p "$RESULTS_DIR"
 RESULTS_CSV="$RESULTS_DIR/experiment_results_5day_$(date +%Y%m%d_%H%M%S).csv"
 
 # Tạo header cho CSV
-echo "experiment_id,csv_file,model_type,hidden_size,num_layers,batch_size,learning_rate,epochs,window_size,mse,mae,rmse,train_months,test_month" > "$RESULTS_CSV"
+echo "experiment_id,csv_file,model_type,hidden_size,num_layers,batch_size,learning_rate,random_noise,epochs,mse,mae,rmse,mape,train_months,test_month" > "$RESULTS_CSV"
 
 # Danh sách các file CSV để test
 CSV_FILES=(
-    "../sample/CVRE2407.csv"
-    "../sample/CMSN2406.csv"
-    "../sample/CSTB2410.csv"
+    "data/CVRE2407.csv"
+    "data/CMSN2406.csv"
+    "data/CSTB2410.csv"
 )
 
 # Danh sách các model type
@@ -48,7 +48,7 @@ RANDOM_NOISE=(true false)
 EXPERIMENT_ID=1
 
 # Tổng số experiments
-TOTAL_EXPERIMENTS=$((${#CSV_FILES[@]} * ${#MODEL_TYPES[@]} * ${#HIDDEN_SIZES[@]} * ${#NUM_LAYERS[@]} * ${#BATCH_SIZES[@]} * ${#LEARNING_RATES[@]}))
+TOTAL_EXPERIMENTS=$((${#CSV_FILES[@]} * ${#MODEL_TYPES[@]} * ${#HIDDEN_SIZES[@]} * ${#NUM_LAYERS[@]} * ${#BATCH_SIZES[@]} * ${#LEARNING_RATES[@]} * ${#RANDOM_NOISE[@]}))
 
 echo "=========================================="
 echo "Bắt đầu chạy experiments"
@@ -83,8 +83,7 @@ for csv_file in "${CSV_FILES[@]}"; do
                             echo "Num Layers: $num_layers"
                             echo "Batch Size: $batch_size"
                             echo "Learning Rate: $lr"
-                            echo "Window Size: $window_size"
-                            echo "Epochs: $CURRENT_EPOCHS"
+                            echo "Random Noise: $random_noise"
                             echo "----------------------------------------"
                             
                             # Tạo config file tạm thời
@@ -110,7 +109,7 @@ for csv_file in "${CSV_FILES[@]}"; do
 
                             
                             # Chạy training và capture output
-                            OUTPUT=$(python main.py --config "$TEMP_CONFIG" 2>&1)
+                            OUTPUT=$(python3 main.py --config "$TEMP_CONFIG" 2>&1)
                             STATUS=$?
                             
                             # Kiểm tra exit code
@@ -121,6 +120,7 @@ for csv_file in "${CSV_FILES[@]}"; do
                                 MSE=$(echo "$OUTPUT" | grep "MSE:" | tail -1 | awk '{print $2}')
                                 MAE=$(echo "$OUTPUT" | grep "MAE:" | tail -1 | awk '{print $2}')
                                 RMSE=$(echo "$OUTPUT" | grep "RMSE:" | tail -1 | awk '{print $2}')
+                                MAPE=$(echo "$OUTPUT" | grep "MAPE:" | tail -1 | awk '{print $2}')
                                 TRAIN_MONTHS_LINE=$(echo "$OUTPUT" | grep "Train months:")
                                 TEST_MONTH_LINE=$(echo "$OUTPUT" | grep "Test month:")
                                 
@@ -136,23 +136,17 @@ for csv_file in "${CSV_FILES[@]}"; do
                                 MSE=${MSE:-"N/A"}
                                 MAE=${MAE:-"N/A"}
                                 RMSE=${RMSE:-"N/A"}
+                                MAPE=${MAPE:-"N/A"}
                                 TRAIN_MONTHS=${TRAIN_MONTHS:-"N/A"}
                                 TEST_MONTH=${TEST_MONTH:-"N/A"}
                                 
-                                echo "  MSE: $MSE"
-                                echo "  MAE: $MAE"
-                                echo "  RMSE: $RMSE"
-                                
                                 # Ghi kết quả vào CSV
-                                echo "$EXPERIMENT_ID,$csv_name,$model_type,$hidden_size,$num_layers,$batch_size,$window_size,$lr,$CURRENT_EPOCHS,$MSE,$MAE,$RMSE,$TRAIN_MONTHS,$TEST_MONTH" >> "$RESULTS_CSV"
+                                echo "$EXPERIMENT_ID,$csv_name,$model_type,$hidden_size,$num_layers,$batch_size,$lr,$random_noise,$CURRENT_EPOCHS,$MSE,$MAE,$RMSE,$MAPE,$TRAIN_MONTHS,$TEST_MONTH" >> "$RESULTS_CSV"
                             else
                                 echo "✗ Training thất bại (exit code $STATUS)"
-                                echo "------ Python error output ------"
-                                echo "$OUTPUT"
-                                echo "---------------------------------"
 
                                 # Ghi lỗi vào CSV
-                                echo "$EXPERIMENT_ID,$csv_name,$model_type,$hidden_size,$num_layers,$batch_size,$window_size,$lr,$CURRENT_EPOCHS,ERROR,ERROR,ERROR,N/A,N/A" >> "$RESULTS_CSV"
+                                echo "$EXPERIMENT_ID,$csv_name,$model_type,$hidden_size,$num_layers,$batch_size,$lr,$random_noise,$CURRENT_EPOCHS,,,,,," >> "$RESULTS_CSV"
                             fi
                             
                             # Xóa temp config
